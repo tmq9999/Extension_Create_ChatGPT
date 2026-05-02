@@ -750,6 +750,8 @@
     const startUrl = window.location.href;
     const deadline = Date.now() + timeout;
     let lastResult = 'still_on_otp';
+    let firstErrorTime = null;
+    const ERROR_CONFIRM_DELAY = 3000; // Chờ 3s sau khi thấy error để xác nhận
 
     // Poll mỗi 500ms, tối đa timeout ms
     while (Date.now() < deadline) {
@@ -759,7 +761,8 @@
         await randomDelay(1000, 2000);
       }
 
-      // Nếu URL đã thay đổi (navigate ra khỏi email-verification) → thành công
+      // Ʈu tiên: Nếu URL đã thay đổi (navigate ra khỏi email-verification) → thành công
+      // Check URL LUÔN TRƯỚC, kể cả khi đã thấy error trước đó
       const currentUrl = window.location.href;
       if (currentUrl !== startUrl && !currentUrl.includes('email-verification')) {
         log(`URL đã thay đổi: ${startUrl} → ${currentUrl}`);
@@ -768,16 +771,30 @@
 
       lastResult = checkOtpResult();
 
-      // Nếu xác nhận success hoặc error rõ ràng → trả về ngay
-      if (lastResult === 'success' || lastResult === 'error') {
-        return lastResult;
+      // Success → trả về ngay
+      if (lastResult === 'success') {
+        return 'success';
+      }
+
+      // Error → KHÔNG trả về ngay, chờ thêm ERROR_CONFIRM_DELAY
+      // để xem URL có thay đổi không (OTP đúng nhưng page chưa navigate)
+      if (lastResult === 'error') {
+        if (!firstErrorTime) {
+          firstErrorTime = Date.now();
+          log('Phát hiện error, chờ xác nhận...');
+        } else if (Date.now() - firstErrorTime >= ERROR_CONFIRM_DELAY) {
+          // Đã thấy error liên tục 3s và URL không thay đổi → lỗi thật
+          return 'error';
+        }
+      } else {
+        // Nếu không còn thấy error → reset timer
+        firstErrorTime = null;
       }
 
       await sleep(500);
     }
 
     // Hết timeout: check lần cuối
-    // Nếu URL đã thay đổi trong lúc chờ
     if (window.location.href !== startUrl && !window.location.href.includes('email-verification')) {
       return 'success';
     }
@@ -894,14 +911,12 @@
     // Kiểm tra lỗi OTP — bao gồm tiếng Việt và tiếng Anh
     const errorPatterns = [
       'invalid code', 'incorrect code', 'wrong code',
-      'expired', 'try again',
+      'code is incorrect', 'code is invalid', 'code has expired',
+      'code expired', 'verification code is invalid',
       'mã không chính xác',
       'mã không hợp lệ',
       'mã đã hết hạn',
-      'không chính xác',
-      'code is incorrect',
-      'code is invalid',
-      'code has expired',
+      'mã xác thực không hợp lệ',
     ];
 
     // Check error elements trên DOM — chỉ các selector cụ thể, tránh false positive
