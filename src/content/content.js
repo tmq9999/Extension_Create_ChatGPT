@@ -248,6 +248,20 @@
     }
   }
 
+  // Fix: Nếu state='OTP' nhưng đã navigate ra khỏi trang email-verification
+  // (ví dụ sang about-you, profile) → chuyển sang AUTO_DETECT để detect đúng bước
+  if (currentState.step === 'OTP' && currentUrl.includes('auth.openai.com') &&
+      !currentUrl.includes('email-verification')) {
+    const hasOtpField = document.querySelector(
+      'input[name="code"], input[autocomplete="one-time-code"], input[type="text"][maxlength="1"]'
+    );
+    if (!hasOtpField) {
+      log('State=OTP nhưng không còn ở trang OTP, auto-detect lại...');
+      currentState = { step: 'AUTO_DETECT' };
+      setState(currentState);
+    }
+  }
+
   // ── Dispatch theo state ────────────────────────────────────────────
 
   try {
@@ -687,16 +701,9 @@
       }
 
       log('Đã nhập OTP, chờ kết quả xác nhận...');
-      await randomDelay(2000, 3500);
 
-      // Chờ Cloudflare nếu có
-      if (document.title.toLowerCase().includes('just a moment')) {
-        await waitCloudflare(30000);
-        await randomDelay(2000, 3000);
-      }
-
-      // 3. Kiểm tra kết quả OTP
-      const otpResult = checkOtpResult();
+      // Fix: Chờ và poll kết quả thay vì check 1 lần — cho trang đủ thời gian navigate
+      const otpResult = await waitForOtpResult(8000);
       log(`Kết quả check OTP: ${otpResult}`);
 
       if (otpResult === 'success') {
@@ -706,14 +713,23 @@
         return;
       }
 
-      if (otpResult === 'error' || otpResult === 'still_on_otp') {
-        // Thêm code vào SET fail
+      if (otpResult === 'error') {
+        // Chỉ thêm vào failedCodes khi CHẮC CHẮN là lỗi (có error message rõ ràng)
         failedCodes.add(otp);
         log(`OTP ${otp} sai hoặc hết hạn, thêm vào danh sách fail (attempt ${attempt}/${MAX_OTP_RETRIES})`);
         if (attempt >= MAX_OTP_RETRIES) {
           throw new Error('OTP sai sau ' + MAX_OTP_RETRIES + ' lần thử');
         }
-        // Tiếp tục vòng lặp → đầu vòng sẽ xóa code + click Gửi lại
+        continue;
+      }
+
+      if (otpResult === 'still_on_otp') {
+        // Vẫn ở trang OTP nhưng không có lỗi rõ ràng — có thể OTP đúng nhưng trang chưa navigate
+        // Không thêm vào failedCodes để có thể thử lại cùng code
+        log(`OTP ${otp} chưa xác nhận được (vẫn ở trang OTP), thử lại (attempt ${attempt}/${MAX_OTP_RETRIES})`);
+        if (attempt >= MAX_OTP_RETRIES) {
+          throw new Error('Không xác nhận được OTP sau ' + MAX_OTP_RETRIES + ' lần thử');
+        }
         continue;
       }
 
@@ -723,6 +739,50 @@
       await autoDetectStep(job);
       return;
     }
+  }
+
+  /**
+   * Chờ và poll kết quả OTP — cho trang đủ thời gian navigate/hiển thị lỗi
+   * @param {number} timeout - Thời gian tối đa chờ (ms)
+   * @returns {Promise<'success'|'error'|'still_on_otp'|'unknown'>}
+   */
+  async function waitForOtpResult(timeout = 8000) {
+    const startUrl = window.location.href;
+    const deadline = Date.now() + timeout;
+    let lastResult = 'still_on_otp';
+
+    // Poll mỗi 500ms, tối đa timeout ms
+    while (Date.now() < deadline) {
+      // Chờ Cloudflare nếu có
+      if (document.title.toLowerCase().includes('just a moment')) {
+        await waitCloudflare(30000);
+        await randomDelay(1000, 2000);
+      }
+
+      // Nếu URL đã thay đổi (navigate ra khỏi email-verification) → thành công
+      const currentUrl = window.location.href;
+      if (currentUrl !== startUrl && !currentUrl.includes('email-verification')) {
+        log(`URL đã thay đổi: ${startUrl} → ${currentUrl}`);
+        return 'success';
+      }
+
+      lastResult = checkOtpResult();
+
+      // Nếu xác nhận success hoặc error rõ ràng → trả về ngay
+      if (lastResult === 'success' || lastResult === 'error') {
+        return lastResult;
+      }
+
+      await sleep(500);
+    }
+
+    // Hết timeout: check lần cuối
+    // Nếu URL đã thay đổi trong lúc chờ
+    if (window.location.href !== startUrl && !window.location.href.includes('email-verification')) {
+      return 'success';
+    }
+
+    return lastResult;
   }
 
   /**
@@ -844,9 +904,8 @@
       'code has expired',
     ];
 
-    // Cũng check error elements trực tiếp trên DOM
+    // Check error elements trên DOM — chỉ các selector cụ thể, tránh false positive
     const errorElements = document.querySelectorAll(
-      '[class*="error"], [class*="alert"], [role="alert"], ' +
       '[data-testid*="error"], .text-red, .text-danger, ' +
       'span[style*="color: red"], span[style*="color:red"], ' +
       'p[style*="color: red"], p[style*="color:red"]'
@@ -854,9 +913,14 @@
     let hasVisibleError = false;
     for (const el of errorElements) {
       const t = (el.textContent || '').trim();
+      // Chỉ coi là error nếu nội dung liên quan đến OTP/code
       if (t.length > 0 && t.length < 200) {
-        console.log(`[checkOtp] Error element found: "${t}"`);
-        hasVisibleError = true;
+        const tLower = t.toLowerCase();
+        const isOtpError = errorPatterns.some(p => tLower.includes(p));
+        if (isOtpError) {
+          console.log(`[checkOtp] Error element found: "${t}"`);
+          hasVisibleError = true;
+        }
       }
     }
 
