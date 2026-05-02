@@ -1,0 +1,80 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT AutoReg Pro",
+  "version": "3.1.1",
+  "description": "Tự động đăng ký tài khoản ChatGPT — đa luồng, hotmail đồng văn, DongVanFB mail tạm, trial plus, OTP tối ưu v3.1",
+  "author": "AutoReg Pro",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "alarms",
+    "notifications",
+    "cookies",
+    "webRequest",
+    "webNavigation"
+  ],
+
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://auth.openai.com/*",
+    "https://api.mail.tm/*",
+    "https://outlook.live.com/*",
+    "https://login.microsoftonline.com/*",
+    "https://graph.microsoft.com/*",
+    "https://tools.dongvanfb.net/*",
+    "https://api.dongvanfb.net/*",
+    "https://*.openai.com/*",
+    "https://omocaptcha.com/*",
+    "https://api.omocaptcha.com/*",
+    "https://2captcha.com/*",
+    "https://api.anti-captcha.com/*",
+    "https://*.stripe.com/*",
+    "https://js.stripe.com/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/background.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "ChatGPT AutoReg Pro"
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://auth.openai.com/*"
+      ],
+      "js": ["src/content/content.js", "src/content/trial.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

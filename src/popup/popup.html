@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatGPT AutoReg Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">AR</div>
+        <span class="title">AutoReg Pro</span>
+        <span class="version">v3.1</span>
+      </div>
+      <div class="header-right">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Ready</span>
+      </div>
+    </header>
+
+    <!-- ═══ Tabs ═══ -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="tab" data-tab="register">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Register
+      </button>
+      <button class="tab" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        Settings
+      </button>
+      <button class="tab" data-tab="log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Log
+      </button>
+    </nav>
+
+    <!-- ═══ Tab: Dashboard ═══ -->
+    <div class="tab-content active" id="tab-dashboard">
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat">
+          <span class="stat-num" id="statTotal">0</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat success">
+          <span class="stat-num" id="statSuccess">0</span>
+          <span class="stat-label">Success</span>
+        </div>
+        <div class="stat error">
+          <span class="stat-num" id="statFailed">0</span>
+          <span class="stat-label">Failed</span>
+        </div>
+        <div class="stat plus">
+          <span class="stat-num" id="statPlus">0</span>
+          <span class="stat-label">Trial+</span>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search accounts...">
+        <button class="btn btn-sm btn-outline" id="btnExportCsv" title="Export CSV">CSV</button>
+        <button class="btn btn-sm btn-outline" id="btnExportTxt" title="Export TXT">TXT</button>
+        <button class="btn btn-sm btn-danger" id="btnClearAll" title="Clear all">Del</button>
+      </div>
+
+      <!-- Account Table -->
+      <div class="table-wrap">
+        <table class="account-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAll"></th>
+              <th>Email</th>
+              <th>Pass</th>
+              <th>Status</th>
+              <th>Plus</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="accountTableBody">
+            <tr class="empty-row">
+              <td colspan="6">No accounts yet</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ Tab: Register ═══ -->
+    <div class="tab-content" id="tab-register">
+      <!-- Progress -->
+      <div class="progress-section" id="progressSection" style="display:none">
+        <div class="progress-info">
+          <span id="progressText">0 / 0</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
+
+      <!-- Basic Controls -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Accounts</label>
+          <input type="number" id="numAccounts" value="1" min="1" max="500" class="input">
+        </div>
+        <div class="form-group">
+          <label>Threads</label>
+          <input type="number" id="numThreads" value="2" min="1" max="10" class="input">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email Provider</label>
+          <select id="emailProvider" class="input">
+            <option value="mailtm">mail.tm (auto)</option>
+            <option value="hotmail_dongvan">Hotmail DV</option>
+            <option value="dongvan_maildomain">DongVanFB Mail</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Country</label>
+          <select id="countryCode" class="input">
+            <option value="US">US</option>
+            <option value="GB">UK</option>
+            <option value="JP">JP</option>
+            <option value="KR">KR</option>
+            <option value="AU">AU</option>
+            <option value="CA">CA</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Hotmail DongVan -->
+      <div id="hotmailSection" style="display:none">
+        <div class="form-group">
+          <label>Hotmail List (email|pass|refreshToken|clientId)</label>
+          <textarea id="hotmailInput" class="input textarea" rows="3"
+            placeholder="user@outlook.com|password123|refresh_token|client_id"></textarea>
+        </div>
+        <div class="form-group">
+          <label>API Key dongvanfb.net</label>
+          <input type="text" id="hotmailApiKey" class="input" placeholder="Enter API key">
+        </div>
+      </div>
+
+      <!-- DongVanFB Mail Domain -->
+      <div id="dongvanMailSection" style="display:none">
+        <div class="form-group">
+          <label>API Key dongvanfb.net</label>
+          <input type="text" id="dongvanApiKey" class="input" placeholder="Enter API key">
+        </div>
+        <div class="form-group">
+          <label>Mail Type</label>
+          <select id="dongvanMailType" class="input">
+            <option value="dropmail">Dropmail</option>
+            <option value="mailtm">MailTM</option>
+            <option value="10minutemail">10 Minute Mail</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Proxy -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="useProxy">
+          <span>Use Proxy</span>
+        </label>
+      </div>
+
+      <div class="form-group" id="proxySection" style="display:none">
+        <label>Proxy List (1 per line)</label>
+        <textarea id="proxyInput" class="input textarea" rows="3"
+          placeholder="http://ip:port&#10;socks5://user:pass@ip:port"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button class="btn btn-primary btn-lg" id="btnStart">Start Register</button>
+        <button class="btn btn-danger btn-lg" id="btnStop" disabled>Stop</button>
+      </div>
+
+      <!-- Trial Plus -->
+      <div class="trial-section">
+        <div class="trial-divider"><span>Trial Plus</span></div>
+        <div class="form-group">
+          <label>Plan Type</label>
+          <select id="trialPlanType" class="input">
+            <option value="personal">Personal (Plus)</option>
+            <option value="business">Business</option>
+          </select>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-trial btn-lg" id="btnTrialPlus">Start Trial Plus</button>
+        </div>
+        <div class="trial-status" id="trialStatus" style="display:none">
+          <span class="trial-status-text" id="trialStatusText"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Tab: Settings ═══ -->
+    <div class="tab-content" id="tab-settings">
+
+      <!-- Section: General -->
+      <div class="section-header open" data-section="general">
+        <span class="section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          General
+        </span>
+        <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="section-body open" id="section-general">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Delay Min (ms)</label>
+            <input type="number" id="delayMin" value="2000" min="500" class="input">
+          </div>
+          <div class="form-group">
+            <label>Delay Max (ms)</label>
+            <input type="number" id="delayMax" value="5000" min="1000" class="input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>BIN List for Trial (1 per line)</label>
+          <textarea id="binList" class="input textarea" rows="3"
+            placeholder="411111&#10;550000&#10;625814"></textarea>
+        </div>
+      </div>
+
+      <!-- Section: OTP Timing -->
+      <div class="section-header" data-section="otp">
+        <span class="section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          OTP Timing
+        </span>
+        <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="section-body" id="section-otp">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Initial Wait (ms)</label>
+            <input type="number" id="otpInitialWait" value="3000" min="1000" max="15000" step="500" class="input">
+          </div>
+          <div class="form-group">
+            <label>Poll Interval (ms)</label>
+            <input type="number" id="otpPollInterval" value="2500" min="1000" max="10000" step="500" class="input">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Resend Wait (ms)</label>
+            <input type="number" id="otpResendWait" value="5000" min="2000" max="20000" step="1000" class="input">
+          </div>
+          <div class="form-group">
+            <label>Max Polls</label>
+            <input type="number" id="otpMaxPolls" value="30" min="5" max="60" class="input">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Polls Before Resend</label>
+            <input type="number" id="otpPollsBeforeResend" value="8" min="3" max="20" class="input">
+          </div>
+          <div class="form-group"></div>
+        </div>
+      </div>
+
+      <!-- Section: Captcha -->
+      <div class="section-header" data-section="captcha">
+        <span class="section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Captcha
+        </span>
+        <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="section-body" id="section-captcha">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Captcha Service</label>
+            <select id="captchaService" class="input">
+              <option value="none">Manual</option>
+              <option value="omocaptcha">OMOcaptcha</option>
+              <option value="2captcha">2Captcha</option>
+              <option value="anticaptcha">Anti-Captcha</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Retry on Card Fail</label>
+            <input type="number" id="trialMaxRetry" value="10" min="1" max="30" class="input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Captcha API Key</label>
+          <input type="text" id="captchaApiKey" class="input" placeholder="Enter captcha API key">
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <button class="btn btn-primary" id="btnSaveSettings" style="margin-top: 8px;">Save Settings</button>
+      <div class="save-msg" id="saveMsg" style="display:none">Settings saved!</div>
+    </div>
+
+    <!-- ═══ Tab: Log ═══ -->
+    <div class="tab-content" id="tab-log">
+      <div class="log-toolbar">
+        <button class="btn btn-sm btn-outline" id="btnClearLog">Clear Log</button>
+        <label class="checkbox-label">
+          <input type="checkbox" id="autoScroll" checked>
+          <span>Auto scroll</span>
+        </label>
+      </div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
